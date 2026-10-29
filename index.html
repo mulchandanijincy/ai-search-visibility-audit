@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Search Visibility &amp; Answer Engine Audit</title>
+<style>
+:root{--navy:#12306b;--tint:#eef3fb;--line:#d6e0f0;--ink:#14233f;--mute:#5d6f8c}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,sans-serif;display:flex;min-height:100vh}
+aside{width:290px;flex:none;background:var(--navy);color:#fff;padding:28px 22px;position:sticky;top:0;height:100vh;overflow:auto}
+aside h1{font:600 19px/1.3 Georgia,serif;margin:0 0 6px}
+aside p{color:#c3d1ee;font-size:13px;margin:0 0 18px}
+aside input[type=text],aside textarea{width:100%;border:0;border-radius:8px;padding:9px;font:inherit;margin-bottom:8px;color:var(--ink)}
+aside textarea{min-height:110px;resize:vertical}
+aside label{display:flex;gap:8px;font-size:12.5px;color:#dbe5f7;margin-bottom:12px}
+aside label input{margin-top:3px}
+aside button{background:#fff;color:var(--navy);border:0;border-radius:8px;padding:9px 14px;font:700 14px inherit;cursor:pointer;margin:0 6px 8px 0}
+aside button:disabled{opacity:.6}
+aside nav{margin-top:14px;border-top:1px solid #34508a;padding-top:14px}
+aside nav a{display:block;color:#dbe5f7;text-decoration:none;padding:6px 0;font-size:14px}
+aside nav a:hover{color:#fff;text-decoration:underline}
+main{flex:1;min-width:0;padding:32px 36px;max-width:960px}
+h2{font:600 19px Georgia,serif;color:var(--navy);margin:0 0 10px;scroll-margin-top:20px}
+section{margin-bottom:34px}
+.tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:20px;padding:2px 10px;margin-right:8px;vertical-align:middle}
+.m{background:var(--navy);color:#fff}
+.e{border:1.5px dashed var(--navy);color:var(--navy)}
+.note{font-size:13px;color:var(--mute)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);word-break:break-word}th{color:var(--navy);background:var(--tint)}
+details{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:600;color:var(--navy);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy);font-weight:600;margin-top:10px}
+.ev{font-size:13px;background:var(--tint);border-radius:6px;padding:6px 10px;margin:4px 0}
+.err{background:var(--tint);border-left:4px solid var(--navy);padding:10px 14px;border-radius:6px}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:24px;color:var(--mute)}
+@media(max-width:820px){body{display:block}aside{width:100%;height:auto;position:static}main{padding:22px}}
+@media print{aside{display:none}}
+</style>
+</head>
+<body>
+<aside>
+<h1>AI Search Visibility Audit</h1>
+<p>Does your site clearly answer what people ask AI search?</p>
+<input type="text" id="url" placeholder="https://example.com">
+<textarea id="qs" placeholder="One target query per line"></textarea>
+<label><input type="checkbox" id="ok"> I own this site or have permission to analyse it (up to 5 pages, 8 queries).</label>
+<button id="go">Run audit</button><button id="demo">Demo</button>
+<nav><a href="#measured">Measured: page facts</a><a href="#coverage">Measured: query coverage</a><a href="#estimates">Estimates: answer quality</a><a href="#gaps">Estimates: site gaps</a></nav>
+</aside>
+<main>
+<div id="head"></div>
+<div id="out"><div class="empty">Enter a site and queries, or press Demo to see a sample result. Demo data is illustrative, not a real crawl.</div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct=n=>Math.round(n*100)+"%";
+$("go").onclick=async()=>{
+  $("go").disabled=true;$("go").textContent="Analysing…";
+  try{
+    const r=await fetch("/api/visibility",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:$("url").value.trim(),queries:$("qs").value.split("\n"),consent:$("ok").checked})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||"Audit failed");
+    show(d);
+  }catch(e){$("out").innerHTML=`<div class="err">${esc(e.message)}</div>`}
+  $("go").disabled=false;$("go").textContent="Run audit";
+};
+$("demo").onclick=()=>{const u="https://demo-clinic.example/";show({demo:true,site:"https://demo-clinic.example",date:"2026-10-28",
+measured:{pages:[{url:u,title:"Demo Clinic",words:412,schemaTypes:["Organization"],questionHeadings:0,hasList:true,hasTable:false},{url:u+"services",title:"Services",words:640,schemaTypes:[],questionHeadings:2,hasList:true,hasTable:true},{url:u+"contact",title:"Contact",words:150,schemaTypes:[],questionHeadings:0,hasList:false,hasTable:false}],
+queries:[{query:"What services does Demo Clinic offer?",bestPage:{url:u+"services",textCoverage:1,headingCoverage:.67}},{query:"How much does a consultation cost?",bestPage:{url:u+"services",textCoverage:.5,headingCoverage:0}},{query:"Is Demo Clinic open on weekends?",bestPage:{url:u+"contact",textCoverage:.33,headingCoverage:0}}]},
+estimated:{summary:"Services are explained clearly, but pricing and opening hours are not stated anywhere in the pages read, so two of three queries are unlikely to be answered directly.",
+queries:[{query:"What services does Demo Clinic offer?",answered:"Yes",evidence:"We offer general check-ups, vaccinations and minor procedures",evidenceVerified:true,missing_answer:"Nothing essential. A short one-paragraph summary near the top would help.",schema:"Service for each listed service",content_gap:"No FAQ-style heading for this question."},
+{query:"How much does a consultation cost?",answered:"No",evidence:"",evidenceVerified:false,missing_answer:"A clear statement of consultation fees, or how fees are confirmed.",schema:"FAQPage once a pricing answer exists",content_gap:"Pricing is absent from all pages read."},
+{query:"Is Demo Clinic open on weekends?",answered:"Partly",evidence:"Open Monday to Friday, 9am to 6pm",evidenceVerified:true,missing_answer:"An explicit weekend answer, even if it is “closed on weekends”.",schema:"LocalBusiness with openingHours",content_gap:"Hours appear only on the contact page, not in structured data."}],
+site_gaps:["Only the homepage has structured data. Services and contact pages have none.","Few headings are phrased as questions, which makes direct answers harder to extract."]}})};
+function show(d){
+  const m=d.measured,e=d.estimated;
+  $("head").innerHTML=`<p class="note">${esc(d.site)} · ${d.date}${d.demo?" · DEMO DATA":""} · <a href="#" onclick="window.print();return false" style="color:var(--navy)">Print / save as PDF</a></p>`;
+  let h=`<section id="measured"><h2><span class="tag m">Measured</span>What the pages contain</h2><table><tr><th>Page</th><th>Words</th><th>Schema types</th><th>Question headings</th><th>List / table</th></tr>
+  ${m.pages.map(p=>`<tr><td>${esc(p.url)}</td><td>${p.words}</td><td>${p.schemaTypes.length?esc(p.schemaTypes.join(", ")):"none"}</td><td>${p.questionHeadings}</td><td>${[p.hasList&&"list",p.hasTable&&"table"].filter(Boolean).join(", ")||"–"}</td></tr>`).join("")}</table></section>
+  <section id="coverage"><h2><span class="tag m">Measured</span>Query term coverage</h2><p class="note">Share of each query’s key words found in the best page’s text and headings. High coverage does not prove the question is answered.</p>
+  <table><tr><th>Query</th><th>Best page</th><th>In text</th><th>In headings</th></tr>${m.queries.map(q=>`<tr><td>${esc(q.query)}</td><td>${esc(q.bestPage.url)}</td><td>${pct(q.bestPage.textCoverage)}</td><td>${pct(q.bestPage.headingCoverage)}</td></tr>`).join("")}</table></section>`;
+  if(!e)h+=`<div class="empty">AI estimates were unavailable. The measured results above still apply.</div>`;
+  else{
+    h+=`<section id="estimates"><h2><span class="tag e">Estimate</span>Answer quality by query</h2><p>${esc(e.summary)}</p>
+    ${e.queries.map(q=>`<details><summary>${esc(q.query)} <span class="tag e">${esc(q.answered)}</span></summary>
+    ${q.evidence?`<div class="lbl">Evidence ${q.evidenceVerified?"(quote verified in page text)":""}</div><div class="ev">“${esc(q.evidence)}”</div>`:`<div class="note">No supporting passage found.</div>`}
+    <div class="lbl">Missing answer</div><div>${esc(q.missing_answer)}</div><div class="lbl">Schema opportunity</div><div>${esc(q.schema)}</div><div class="lbl">Content gap</div><div>${esc(q.content_gap)}</div></details>`).join("")}</section>
+    <section id="gaps"><h2><span class="tag e">Estimate</span>Site-wide gaps</h2><ul>${(e.site_gaps||[]).map(g=>`<li>${esc(g)}</li>`).join("")}</ul></section>`;
+  }
+  $("out").innerHTML=h;
+  document.querySelectorAll("details").forEach((x,i)=>{if(i===0)x.open=true});
+}
+</script>
+</body>
+</html>
